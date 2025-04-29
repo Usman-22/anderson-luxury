@@ -1,0 +1,78 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 45 48% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 68%;
+
+    --accent: 45 48% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 45 48% 53%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-dark text-white font-lato;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-playfair;
+  }
+}
+
+@layer components {
+  .gold-gradient {
+    @apply bg-gradient-to-r from-gold/90 to-gold;
+  }
+  
+  .button-gold {
+    @apply gold-gradient text-black font-medium px-6 py-3 rounded transition-all duration-300 hover:shadow-[0_0_15px_rgba(199,162,70,0.5)] hover:scale-[1.02];
+  }
+
+  .button-outline {
+    @apply border border-gold text-gold font-medium px-6 py-3 rounded transition-all duration-300 hover:bg-gold/10;
+  }
+}
+
+@layer utilities {
+  .animate-enter {
+    @apply opacity-0 translate-y-2;
+  }
+  
+  .animate-enter-active {
+    @apply opacity-100 translate-y-0 transition-all duration-500 ease-out;
+  }
+}
