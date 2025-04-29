@@ -6,15 +6,15 @@ import { ArrowRight } from 'lucide-react';
 // Sample hero images for carousel
 const heroImages = [
   {
-    url: "https://images.unsplash.com/photo-1545164710-052201c31c2a?q=80&w=2070",
+    url: "https://images.app.goo.gl/Kk9rqcnqbrQphDTGA",
     alt: "Luxury Prevost Motorhome",
   },
   {
-    url: "https://images.unsplash.com/photo-1613977257363-707ba9348227?q=80&w=2070",
+    url: "https://images.app.goo.gl/yQGzt8tSZxCzMKoW8",
     alt: "Entertainer Coach Interior",
   },
   {
-    url: "https://images.unsplash.com/photo-1632823469850-2f77dd9c7f93?q=80&w=2070",
+    url: "https://images.app.goo.gl/XqKc5YhhoUPxa5At6",
     alt: "Premium Motorhome on the Road",
   }
 ];
