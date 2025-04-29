@@ -6,7 +6,7 @@ import { ArrowRight } from 'lucide-react';
 // Sample hero images for carousel
 const heroImages = [
   {
-    url: "https://images.app.goo.gl/Kk9rqcnqbrQphDTGA",
+    url: "https://www.freepik.com/free-photo/pensive-woman-train_13057553.htm#fromView=keyword&page=1&position=0&uuid=e1426d8a-fa3e-4e9a-9d12-e707c1f201ef&query=Motorcoach",
     alt: "Luxury Prevost Motorhome",
   },
   {
