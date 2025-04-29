@@ -6,15 +6,15 @@ import { ArrowRight } from 'lucide-react';
 // Sample hero images for carousel
 const heroImages = [
   {
-    url: "/adult-traveler-man-sit-down-inside-modern-cozy-mob-2025-03-09-00-11-49-utc.jpg",
+    url: "/image-1.webp",
     alt: "Luxury Prevost Motorhome",
   },
   {
-    url: "/adult-traveler-man-sit-down-inside-modern-cozy-mob-2025-03-09-00-11-49-utc.jpg",
+    url: "/image-2.webp",
     alt: "Entertainer Coach Interior",
   },
   {
-    url: "/adult-traveler-man-sit-down-inside-modern-cozy-mob-2025-03-09-00-11-49-utc.jpg",
+    url: "/image-3.webp",
     alt: "Premium Motorhome on the Road",
   }
 ];
