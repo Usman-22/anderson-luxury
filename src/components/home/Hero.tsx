@@ -10,11 +10,11 @@ const heroImages = [
     alt: "Luxury Prevost Motorhome",
   },
   {
-    url: "https://images.app.goo.gl/yQGzt8tSZxCzMKoW8",
+    url: "/adult-traveler-man-sit-down-inside-modern-cozy-mob-2025-03-09-00-11-49-utc.jpg",
     alt: "Entertainer Coach Interior",
   },
   {
-    url: "https://images.app.goo.gl/XqKc5YhhoUPxa5At6",
+    url: "/adult-traveler-man-sit-down-inside-modern-cozy-mob-2025-03-09-00-11-49-utc.jpg",
     alt: "Premium Motorhome on the Road",
   }
 ];
