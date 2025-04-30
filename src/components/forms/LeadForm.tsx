@@ -4,12 +4,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner"; // ✅ import toast
+import { supabase } from "@/lib/supabase";
 
 interface LeadFormProps {
-  listingTitle: string;
+  listingSlug: string; // Use slug to uniquely reference the listing
 }
 
-const LeadForm = ({ listingTitle }: LeadFormProps) => {
+const LeadForm = ({ listingSlug }: LeadFormProps) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -31,27 +32,26 @@ const LeadForm = ({ listingTitle }: LeadFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    console.log("Submitting lead with payload:", {
+      ...formData,
+      listing: listingSlug, // Passing the listingSlug here to link it with the lead
+    });
 
     try {
-      const payload = {
-        ...formData,
-        listing: listingTitle,
-        created_at: new Date().toISOString(),
-      };
+      // Insert lead into the Supabase leads table
+      const { error } = await supabase.from("leads").insert([
+        {
+          ...formData,
+          listing: listingSlug, // Link this lead with the listingSlug
+          created_at: new Date().toISOString(),
+        },
+      ]);
 
-      const response = await fetch("http://localhost:5000/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to submit lead");
-      }
+      if (error) throw error;
 
       toast.success("✅ Inquiry sent! Our team will contact you shortly.");
       setFormData({ name: "", email: "", phone: "", comments: "" });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       toast.error("❌ Submission failed. Please try again.");
     } finally {

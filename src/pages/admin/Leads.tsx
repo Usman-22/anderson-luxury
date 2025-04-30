@@ -3,14 +3,17 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Input } from "@/components/ui/input"; // ✅ Using your custom Input component
+import { supabase } from "@/lib/supabase";
 
 interface Lead {
-  id: number;
+  id: string; // UUID type for the 'id' field in Supabase
   name: string;
   email: string;
   phone: string;
   comments: string;
-  created_at: string;
+  listing: string; // The listing this lead is related to (slug or id)
+  created_at: string; // Timestamp of when the lead was created
+  listingTitle?: string; // New: to store listing title fetched from listings table
 }
 
 const Leads = () => {
@@ -21,10 +24,34 @@ const Leads = () => {
   useEffect(() => {
     const fetchLeads = async () => {
       try {
-        const res = await fetch("http://localhost:5000/leads");
-        if (!res.ok) throw new Error("Failed to fetch leads");
-        const data = await res.json();
-        setLeads(data);
+        // Fetch all leads
+        const { data: leadsData, error: leadsError } = await supabase
+          .from("leads")
+          .select("*");
+
+        if (leadsError) throw leadsError;
+
+        // Fetch the listing titles for each lead
+        const leadsWithTitles = await Promise.all(
+          leadsData?.map(async (lead) => {
+            const { data: listingData, error: listingError } = await supabase
+              .from("listings")
+              .select("title")
+              .eq("slug", lead.listing)
+              .single(); // Assuming `listing` is the `slug` of the listing
+
+            if (listingError) {
+              console.error("Failed to fetch listing title:", listingError);
+              lead.listingTitle = "Unknown Listing";
+            } else {
+              lead.listingTitle = listingData?.title || "Unknown Listing";
+            }
+
+            return lead;
+          }) || []
+        );
+
+        setLeads(leadsWithTitles);
       } catch (err) {
         console.error("Failed to fetch leads", err);
       } finally {
@@ -35,8 +62,9 @@ const Leads = () => {
     fetchLeads();
   }, []);
 
+  // Filter leads based on search input
   const filteredLeads = leads.filter((lead) =>
-    (lead.name + lead.email + lead.phone + lead.comments)
+    (lead.name + lead.email + lead.phone + lead.comments + lead.listingTitle)
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );
@@ -69,6 +97,8 @@ const Leads = () => {
                 <th className="py-2 px-4">Email</th>
                 <th className="py-2 px-4">Phone</th>
                 <th className="py-2 px-4">Message</th>
+                <th className="py-2 px-4">Listing</th>{" "}
+                {/* New column for listing title */}
                 <th className="py-2 px-4">Date</th>
               </tr>
             </thead>
@@ -79,6 +109,10 @@ const Leads = () => {
                   <td className="py-2 px-4 text-white/90">{lead.email}</td>
                   <td className="py-2 px-4 text-white/90">{lead.phone}</td>
                   <td className="py-2 px-4 text-white/70">{lead.comments}</td>
+                  <td className="py-2 px-4 text-white/70">
+                    {lead.listingTitle}
+                  </td>{" "}
+                  {/* Show listing title */}
                   <td className="py-2 px-4 text-white/50">
                     {new Date(lead.created_at).toLocaleString()}
                   </td>

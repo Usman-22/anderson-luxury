@@ -1,15 +1,14 @@
-// src/pages/admin/Dashboard.tsx
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { supabase } from "@/lib/supabase"; // Import the supabase instance
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [listingsCount, setListingsCount] = useState(0);
   const [leadsCount, setLeadsCount] = useState(0);
   const [usersCount, setUsersCount] = useState(0);
-  const [blogsCount, setBlogsCount] = useState(0); // ✅ Added blogs count
+  const [blogsCount, setBlogsCount] = useState(0); // Count for blogs
 
   useEffect(() => {
     const admin = localStorage.getItem("admin");
@@ -17,26 +16,42 @@ const Dashboard = () => {
       navigate("/admin/login");
     }
 
-    fetchCounts();
+    fetchCounts(); // Fetch data on component mount
   }, [navigate]);
 
   const fetchCounts = async () => {
     try {
-      const listingsRes = await fetch("http://localhost:5000/listings");
-      const listings = await listingsRes.json();
+      // Fetch Listings Count from Supabase
+      const { data: listings, error: listingsError } = await supabase
+        .from("listings")
+        .select("*");
+
+      if (listingsError) throw listingsError;
       setListingsCount(listings.length);
 
-      const usersRes = await fetch("http://localhost:5000/users");
-      const users = await usersRes.json();
+      // Fetch Users Count from Supabase
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("*");
+
+      if (usersError) throw usersError;
       setUsersCount(users.length);
 
-      const leadsRes = await fetch("http://localhost:5000/leads");
-      const leads = await leadsRes.json();
+      // Fetch Leads Count from Supabase
+      const { data: leads, error: leadsError } = await supabase
+        .from("leads")
+        .select("*");
+
+      if (leadsError) throw leadsError;
       setLeadsCount(leads.length);
 
-      const blogsRes = await fetch("http://localhost:5000/blogs");
-      const blogs = await blogsRes.json();
-      setBlogsCount(blogs.length); // ✅ fetch blogs
+      // Fetch Blogs Count from Supabase
+      const { data: blogs, error: blogsError } = await supabase
+        .from("blogs")
+        .select("*");
+
+      if (blogsError) throw blogsError;
+      setBlogsCount(blogs.length);
     } catch (error) {
       console.error("Failed to fetch counts", error);
     }

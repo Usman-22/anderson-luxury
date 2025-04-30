@@ -59,10 +59,11 @@ const Navbar: React.FC = () => {
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
         <Link to="/" className="flex items-center">
-          <h1 className="text-xl md:text-2xl font-playfair font-bold">
-            <span className="text-white">Prevost</span>
-            <span className="text-gold"> Marketplace</span>
-          </h1>
+          <img
+            src="/anderson-luxury-logo.png"
+            width="130px"
+            alt="anderson-luxury-logo"
+          />
         </Link>
 
         {/* Desktop Navigation */}

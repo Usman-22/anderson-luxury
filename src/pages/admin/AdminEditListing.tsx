@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
+import { v4 as uuidv4 } from "uuid";
 
 const AdminEditListing = () => {
   const { id } = useParams();
@@ -57,7 +58,7 @@ const AdminEditListing = () => {
         coach_type: data.coach_type || "Motorhome",
         status: data.status || "approved",
       });
-      setHeroPreview(data.hero_image_url);
+      setHeroPreview(data.hero_image_url || "");
       setExistingGallery(data.gallery || []);
     };
 
@@ -74,9 +75,10 @@ const AdminEditListing = () => {
   };
 
   const handleHeroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setHeroImage(e.target.files[0]);
-      setHeroPreview(URL.createObjectURL(e.target.files[0]));
+    const file = e.target.files?.[0];
+    if (file) {
+      setHeroImage(file);
+      setHeroPreview(URL.createObjectURL(file));
     }
   };
 
@@ -86,41 +88,46 @@ const AdminEditListing = () => {
     }
   };
 
+  const handleRemoveGalleryImage = (url: string) => {
+    setExistingGallery(existingGallery.filter((img) => img !== url));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      let updatedHeroUrl = heroPreview;
-
+      let heroImageUrl = heroPreview;
       if (heroImage) {
-        const path = `hero-${Date.now()}-${heroImage.name}`;
+        const path = `edit-hero-${uuidv4()}-${heroImage.name}`;
         const { error: uploadError } = await supabase.storage
           .from("coach-images")
-          .upload(path, heroImage, { upsert: true });
+          .upload(path, heroImage);
 
         if (uploadError) throw uploadError;
 
-        const { data } = supabase.storage
+        const { data: heroData } = supabase.storage
           .from("coach-images")
           .getPublicUrl(path);
-        updatedHeroUrl = data.publicUrl;
+
+        heroImageUrl = heroData.publicUrl;
       }
 
       const newGalleryUrls: string[] = [...existingGallery];
       for (let i = 0; i < galleryImages.length; i++) {
         const image = galleryImages[i];
-        const path = `gallery-${Date.now()}-${image.name}`;
+        const path = `edit-gallery-${uuidv4()}-${image.name}`;
         const { error: gError } = await supabase.storage
           .from("coach-images")
           .upload(path, image);
 
         if (gError) throw gError;
 
-        const { data } = supabase.storage
+        const { data: gUrl } = supabase.storage
           .from("coach-images")
           .getPublicUrl(path);
-        newGalleryUrls.push(data.publicUrl);
+
+        newGalleryUrls.push(gUrl.publicUrl);
       }
 
       const { error } = await supabase
@@ -130,7 +137,7 @@ const AdminEditListing = () => {
           year: parseInt(formData.year),
           mileage: parseInt(formData.mileage),
           price: parseInt(formData.price),
-          hero_image_url: updatedHeroUrl,
+          hero_image_url: heroImageUrl,
           gallery: newGalleryUrls,
           updated_at: new Date().toISOString(),
         })
@@ -155,6 +162,20 @@ const AdminEditListing = () => {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+        {/* Title */}
+        <div>
+          <Label htmlFor="title">Title</Label>
+          <Input
+            id="title"
+            name="title"
+            type="text"
+            value={formData.title}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        {/* Year + Make */}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="year">Year</Label>
@@ -172,6 +193,7 @@ const AdminEditListing = () => {
             <Input
               id="make"
               name="make"
+              type="text"
               value={formData.make}
               onChange={handleChange}
               required
@@ -179,12 +201,14 @@ const AdminEditListing = () => {
           </div>
         </div>
 
+        {/* Model + Mileage */}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="model">Model</Label>
             <Input
               id="model"
               name="model"
+              type="text"
               value={formData.model}
               onChange={handleChange}
               required
@@ -203,6 +227,7 @@ const AdminEditListing = () => {
           </div>
         </div>
 
+        {/* Price + Location */}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="price">Price</Label>
@@ -220,6 +245,7 @@ const AdminEditListing = () => {
             <Input
               id="location"
               name="location"
+              type="text"
               value={formData.location}
               onChange={handleChange}
               required
@@ -227,6 +253,7 @@ const AdminEditListing = () => {
           </div>
         </div>
 
+        {/* Hero Image */}
         <div>
           <Label htmlFor="heroImage">Main Image</Label>
           <Input
@@ -239,34 +266,48 @@ const AdminEditListing = () => {
           {heroPreview && (
             <img
               src={heroPreview}
-              alt="Hero Preview"
-              className="mt-3 w-full h-64 object-cover rounded border border-white/10"
+              alt="Main Preview"
+              className="mt-2 h-48 w-full object-cover rounded border border-white/10"
             />
           )}
         </div>
 
+        {/* Gallery Upload */}
         <div>
           <Label htmlFor="gallery">Gallery Images</Label>
           <Input
             id="gallery"
             name="gallery"
             type="file"
-            accept="image/*"
             multiple
+            accept="image/*"
             onChange={handleGalleryChange}
           />
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-            {existingGallery.map((url, idx) => (
-              <img
-                key={idx}
-                src={url}
-                alt={`Gallery ${idx}`}
-                className="w-full h-32 object-cover rounded border border-white/10"
-              />
-            ))}
-          </div>
+
+          {/* Existing Images with remove option */}
+          {existingGallery.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              {existingGallery.map((url, idx) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={url}
+                    alt={`Gallery ${idx}`}
+                    className="w-full h-32 object-cover rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveGalleryImage(url)}
+                    className="absolute top-1 right-1 bg-red-600 text-white text-xs rounded-full px-2 py-1 opacity-0 group-hover:opacity-100"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Comments */}
         <div>
           <Label htmlFor="comments">Comments / Description</Label>
           <Textarea

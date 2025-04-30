@@ -21,7 +21,7 @@ interface Listing {
   coach_type: string;
   hero_image_url: string;
   comments: string;
-  gallery: string[]; // ✅ Gallery image URLs
+  gallery: string[];
   status: string;
 }
 
@@ -149,7 +149,8 @@ const ListingDetail: React.FC = () => {
             </div>
 
             <div className="mt-8">
-              <LeadForm listingTitle={listing.title} />
+              <LeadForm listingSlug={listing.slug} />{" "}
+              {/* Pass slug to LeadForm */}
             </div>
           </div>
         </div>
