@@ -1,5 +1,3 @@
-// src/components/inventory/InventoryListings.tsx
-
 import React, { useEffect, useState } from "react";
 import ListingCard from "@/components/ui/ListingCard";
 import ListingRowCard from "@/components/inventory/ListingRowCard";
@@ -11,6 +9,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { supabase } from "@/lib/supabase"; // ✅ Import Supabase
 
 interface InventoryListingsProps {
   viewMode: "grid" | "list";
@@ -35,6 +34,7 @@ interface Listing {
   location: string;
   coach_type: string;
   hero_image_url: string;
+  status: string;
 }
 
 const InventoryListings: React.FC<InventoryListingsProps> = ({
@@ -48,39 +48,37 @@ const InventoryListings: React.FC<InventoryListingsProps> = ({
     const fetchListings = async () => {
       setLoading(true);
       try {
-        const response = await fetch("http://localhost:5000/listings");
-        if (!response.ok) {
-          throw new Error("Failed to fetch listings");
-        }
-        const data = await response.json();
-        setListings(data);
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("status", "approved"); // ✅ Only approved listings
+
+        if (error) throw error;
+        setListings(data || []);
       } catch (error) {
-        console.error("Error fetching listings:", error);
+        console.error("Error fetching listings from Supabase:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchListings();
   }, []);
 
-  // Apply filtering
+  // Filter logic
   const filteredListings = listings.filter((listing) => {
     const matchPrice =
       listing.price >= filters.priceRange[0] &&
       listing.price <= filters.priceRange[1];
-
     const matchYear =
       listing.year >= filters.yearRange[0] &&
       listing.year <= filters.yearRange[1];
-
     const matchMileage =
       listing.mileage >= filters.mileageRange[0] &&
       listing.mileage <= filters.mileageRange[1];
-
     const matchCoachType =
       !filters.coachType ||
       listing.coach_type.toLowerCase() === filters.coachType.toLowerCase();
-
     const matchLocation =
       !filters.location.trim() ||
       listing.location.toLowerCase().includes(filters.location.toLowerCase());
@@ -119,7 +117,7 @@ const InventoryListings: React.FC<InventoryListingsProps> = ({
             <div className="space-y-6">
               {filteredListings.map((listing) => (
                 <ListingRowCard
-                  key={listing.id.toString()}
+                  key={listing.id}
                   id={listing.id.toString()}
                   slug={listing.slug}
                   title={listing.title}
@@ -134,7 +132,7 @@ const InventoryListings: React.FC<InventoryListingsProps> = ({
             </div>
           )}
 
-          {/* Pagination - static for now */}
+          {/* Pagination Placeholder */}
           <Pagination>
             <PaginationContent>
               <PaginationItem>

@@ -1,10 +1,10 @@
-// src/pages/admin/AdminListings.tsx
-
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // ✅ Importing your custom Input
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 
 interface Listing {
   id: number;
@@ -17,19 +17,24 @@ interface Listing {
   location: string;
   coach_type: string;
   hero_image_url: string;
+  status: string; // ✅ Replacing 'approved'
 }
 
 const AdminListings = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ New for searching
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchListings = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/listings");
-      const data = await response.json();
-      setListings(data);
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setListings(data || []);
     } catch (error) {
       console.error("Failed to fetch listings:", error);
     } finally {
@@ -44,24 +49,43 @@ const AdminListings = () => {
   const handleDelete = async (id: number) => {
     if (confirm("Are you sure you want to delete this listing?")) {
       try {
-        const response = await fetch(`http://localhost:5000/listings/${id}`, {
-          method: "DELETE",
-        });
+        const { error } = await supabase.from("listings").delete().eq("id", id);
+        if (error) throw error;
 
-        if (response.ok) {
-          fetchListings();
-          alert("Listing deleted successfully!");
-        } else {
-          throw new Error("Failed to delete listing");
-        }
+        fetchListings();
+        toast({ title: "Listing deleted successfully!" });
       } catch (error) {
         console.error("Failed to delete listing:", error);
-        alert("An unexpected error occurred.");
+        toast({
+          title: "Error",
+          description: "Failed to delete.",
+          variant: "destructive",
+        });
       }
     }
   };
 
-  // ✅ Filter listings by title, make, model or location
+  const handleApprove = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from("listings")
+        .update({ status: "approved" }) // ✅ Use status instead of approved
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({ title: "Listing approved successfully!" });
+      fetchListings();
+    } catch (error) {
+      console.error("Failed to approve listing:", error);
+      toast({
+        title: "Error",
+        description: "Failed to approve.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredListings = listings.filter((listing) =>
     (listing.title + listing.make + listing.model + listing.location)
       .toLowerCase()
@@ -74,7 +98,6 @@ const AdminListings = () => {
         <h1 className="text-3xl font-playfair font-semibold">
           Manage Listings
         </h1>
-
         <div className="flex gap-3 items-center">
           <Input
             type="text"
@@ -121,7 +144,16 @@ const AdminListings = () => {
                   ${listing.price.toLocaleString()}
                 </p>
 
-                <div className="flex gap-3 mt-4">
+                <div className="flex flex-wrap gap-3 mt-4">
+                  {listing.status !== "approved" && (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                      onClick={() => handleApprove(listing.id)}
+                    >
+                      Approve
+                    </Button>
+                  )}
                   <Link to={`/admin/listings/${listing.id}/edit`}>
                     <Button
                       size="sm"

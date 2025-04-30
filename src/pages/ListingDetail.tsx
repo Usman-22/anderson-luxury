@@ -1,11 +1,12 @@
-// src/pages/ListingDetail.tsx
-
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { Button } from "@/components/ui/button";
-import LeadForm from "@/components/forms/LeadForm"; // Import the LeadForm
+import { supabase } from "@/lib/supabase";
+import LeadForm from "@/components/forms/LeadForm";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay } from "swiper/modules";
+import "swiper/css";
 
 interface Listing {
   id: string;
@@ -20,6 +21,8 @@ interface Listing {
   coach_type: string;
   hero_image_url: string;
   comments: string;
+  gallery: string[]; // ✅ Gallery image URLs
+  status: string;
 }
 
 const ListingDetail: React.FC = () => {
@@ -31,26 +34,28 @@ const ListingDetail: React.FC = () => {
     const fetchListing = async () => {
       setLoading(true);
       try {
-        const response = await fetch("http://localhost:5000/listings");
-        const data = await response.json();
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("slug", slug)
+          .eq("status", "approved")
+          .single();
 
-        const foundListing = data.find((item: Listing) => item.slug === slug);
-
-        if (foundListing) {
-          setListing(foundListing);
-        } else {
+        if (error) {
           setListing(null);
+          console.error("Error fetching listing:", error);
+        } else {
+          setListing(data);
         }
-      } catch (error) {
-        console.error("Error fetching listing:", error);
+      } catch (err) {
+        console.error("Unexpected error:", err);
         setListing(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    if (slug) {
-      fetchListing();
-    }
+    if (slug) fetchListing();
   }, [slug]);
 
   if (loading) {
@@ -75,7 +80,7 @@ const ListingDetail: React.FC = () => {
 
       <main className="flex-grow pt-24 container mx-auto px-4 pb-32">
         <div className="flex flex-col lg:flex-row gap-12">
-          {/* Left - Main Image */}
+          {/* Left - Main Image + Gallery */}
           <div className="w-full lg:w-2/3 space-y-6">
             <img
               src={
@@ -85,7 +90,29 @@ const ListingDetail: React.FC = () => {
               className="rounded-lg w-full object-cover"
             />
 
-            {/* Description Section */}
+            {listing.gallery && listing.gallery.length > 0 && (
+              <div className="mt-6">
+                <h2 className="text-xl font-semibold mb-2">Gallery</h2>
+                <Swiper
+                  modules={[Autoplay]}
+                  spaceBetween={10}
+                  slidesPerView={3}
+                  autoplay={{ delay: 3000, disableOnInteraction: false }}
+                  loop={true}
+                >
+                  {listing.gallery.map((url, index) => (
+                    <SwiperSlide key={index}>
+                      <img
+                        src={url}
+                        alt={`Gallery ${index}`}
+                        className="rounded-lg w-full object-cover h-[300px]"
+                      />
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              </div>
+            )}
+
             <div className="mt-6">
               <h2 className="text-2xl font-semibold mb-2">Description</h2>
               <p className="text-white/70">{listing.comments}</p>
@@ -121,7 +148,6 @@ const ListingDetail: React.FC = () => {
               </p>
             </div>
 
-            {/* Lead Form */}
             <div className="mt-8">
               <LeadForm listingTitle={listing.title} />
             </div>

@@ -36,7 +36,7 @@ const Inventory: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-dark text-white">
       <Navbar />
-      <main className="flex-grow pt-24">
+      <main className="flex-grow pt-24 pb-24">
         <div className="container mx-auto px-4">
           {/* Page Header */}
           <div className="mb-8 text-center">

@@ -1,9 +1,8 @@
-// src/components/home/FeaturedListings.tsx
-
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ListingCard from "../ui/ListingCard";
 import { ArrowRight } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface Listing {
   id: string;
@@ -14,8 +13,9 @@ interface Listing {
   model: string;
   price: number;
   location: string;
-  heroImageUrl: string;
-  coachType: string;
+  hero_image_url: string;
+  coach_type: string;
+  created_at: string;
 }
 
 const FeaturedListings = () => {
@@ -24,22 +24,19 @@ const FeaturedListings = () => {
 
   useEffect(() => {
     const fetchListings = async () => {
+      setLoading(true);
       try {
-        const response = await fetch("http://localhost:5000/listings");
-        const data = await response.json();
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("status", "approved")
+          .order("created_at", { ascending: false })
+          .limit(3);
 
-        // Sort by created_at if available, or just get latest 3
-        const latestThree = data
-          .sort(
-            (a: any, b: any) =>
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-          )
-          .slice(0, 3);
-
-        setListings(latestThree);
+        if (error) throw error;
+        setListings(data || []);
       } catch (error) {
-        console.error("Error fetching listings:", error);
+        console.error("Error fetching featured listings:", error);
       } finally {
         setLoading(false);
       }

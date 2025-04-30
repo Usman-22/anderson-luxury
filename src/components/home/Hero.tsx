@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 // Sample hero images for carousel
 const heroImages = [
@@ -16,7 +15,7 @@ const heroImages = [
   {
     url: "/image-3.webp",
     alt: "Premium Motorhome on the Road",
-  }
+  },
 ];
 
 const Hero = () => {
@@ -24,7 +23,9 @@ const Hero = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev === heroImages.length - 1 ? 0 : prev + 1));
+      setCurrentSlide((prev) =>
+        prev === heroImages.length - 1 ? 0 : prev + 1
+      );
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -37,7 +38,7 @@ const Hero = () => {
           <div
             key={index}
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              currentSlide === index ? 'opacity-100' : 'opacity-0'
+              currentSlide === index ? "opacity-100" : "opacity-0"
             }`}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30 z-10" />
@@ -54,17 +55,25 @@ const Hero = () => {
       <div className="relative z-20 container mx-auto h-full flex flex-col justify-center px-4">
         <div className="max-w-2xl animate-fade-in">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-playfair font-bold text-white mb-4">
-            Luxury Motorhomes & <span className="text-gold">Entertainer Coaches</span>
+            Luxury Motorhomes &{" "}
+            <span className="text-gold">Entertainer Coaches</span>
           </h1>
           <p className="text-xl text-white/80 mb-8 max-w-lg">
-            Experience unparalleled luxury and craftsmanship in our curated selection of premium Prevost motorhomes and entertainer coaches.
+            Experience unparalleled luxury and craftsmanship in our curated
+            selection of premium Prevost motorhomes and entertainer coaches.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link to="/inventory" className="button-gold inline-flex items-center justify-center">
+            <Link
+              to="/inventory"
+              className="button-gold inline-flex items-center justify-center"
+            >
               Browse Inventory
               <ArrowRight className="ml-2" size={18} />
             </Link>
-            <Link to="/list-your-coach" className="button-outline inline-flex items-center justify-center">
+            <Link
+              to="/list-your-coach"
+              className="button-outline inline-flex items-center justify-center"
+            >
               List Your Coach
             </Link>
           </div>
@@ -77,7 +86,7 @@ const Hero = () => {
               key={index}
               onClick={() => setCurrentSlide(index)}
               className={`w-3 h-3 rounded-full transition-all ${
-                currentSlide === index ? 'bg-gold w-8' : 'bg-white/50'
+                currentSlide === index ? "bg-gold w-8" : "bg-white/50"
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />
