@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/lib/supabase";
 
 const AdminCreateBlog = () => {
   const navigate = useNavigate();
@@ -14,6 +15,9 @@ const AdminCreateBlog = () => {
   const [formData, setFormData] = useState({
     title: "",
     content: "",
+    meta_title: "",
+    meta_description: "",
+    tags: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -47,41 +51,63 @@ const AdminCreateBlog = () => {
     setLoading(true);
 
     try {
-      let coverImageUrl = "";
-
-      if (imageFile) {
-        // In real backend: upload the file and get the URL
-        // For now: simulate with base64 or blob URL
-        const reader = new FileReader();
-        reader.readAsDataURL(imageFile);
-        await new Promise((resolve) => (reader.onload = resolve));
-        coverImageUrl = reader.result as string;
-      } else {
+      if (!imageFile) {
         throw new Error("Please select a cover image.");
       }
 
-      const slug = generateSlug(formData.title) || uuidv4();
+      const blogId = uuidv4();
+      const slug = generateSlug(formData.title) || blogId;
+      const fileExt = imageFile.name.split(".").pop();
+      const filePath = `public/${slug}.${fileExt}`;
+
+      // Upload cover image to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from("blog-images")
+        .upload(filePath, imageFile, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("blog-images").getPublicUrl(filePath);
+
+      // Convert tags from comma-separated to array
+      const tagsArray =
+        formData.tags.trim() === ""
+          ? []
+          : formData.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean);
 
       const payload = {
-        ...formData,
+        id: blogId,
         slug,
-        cover_image_url: coverImageUrl,
+        title: formData.title,
+        content: formData.content,
+        cover_image_url: publicUrl,
+        meta_title: formData.meta_title || "",
+        meta_description: formData.meta_description || "",
+        tags: tagsArray,
+        published: false,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      const res = await fetch("http://localhost:5000/blogs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const { error: insertError } = await supabase
+        .from("blogs")
+        .insert(payload);
 
-      if (!res.ok) throw new Error("Failed to create blog.");
+      if (insertError) throw insertError;
 
       toast.success("Blog created successfully!");
       navigate("/admin/blogs");
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Unexpected error.");
+      toast.error(error.message || "Unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -134,6 +160,37 @@ const AdminCreateBlog = () => {
               onChange={handleChange}
               rows={10}
               required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="meta_title">Meta Title</Label>
+            <Input
+              id="meta_title"
+              name="meta_title"
+              value={formData.meta_title}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="meta_description">Meta Description</Label>
+            <Textarea
+              id="meta_description"
+              name="meta_description"
+              value={formData.meta_description}
+              onChange={handleChange}
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tags">Tags (comma-separated)</Label>
+            <Input
+              id="tags"
+              name="tags"
+              value={formData.tags}
+              onChange={handleChange}
             />
           </div>
 

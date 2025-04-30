@@ -2,14 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { supabase } from "@/lib/supabase";
 
 interface Blog {
-  id: number;
+  id: string;
   slug: string;
   title: string;
-  excerpt: string;
   cover_image_url: string;
   created_at: string;
+  meta_description: string;
 }
 
 const Blog = () => {
@@ -19,11 +20,19 @@ const Blog = () => {
   useEffect(() => {
     const fetchBlogs = async () => {
       try {
-        const res = await fetch("http://localhost:5000/blogs");
-        const data = await res.json();
-        setBlogs(data);
+        const { data, error } = await supabase
+          .from("blogs")
+          .select(
+            "id, slug, title, cover_image_url, created_at, meta_description"
+          )
+          .eq("published", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setBlogs(data || []);
       } catch (err) {
-        console.error(err);
+        console.error("Failed to fetch blogs:", err);
+        setBlogs([]);
       } finally {
         setLoading(false);
       }
@@ -61,7 +70,9 @@ const Blog = () => {
                   <h2 className="text-xl font-semibold mb-2 group-hover:text-gold">
                     {blog.title}
                   </h2>
-                  <p className="text-white/70">{blog.excerpt}</p>
+                  <p className="text-white/70 line-clamp-3">
+                    {blog.meta_description || "No description provided."}
+                  </p>
                   <p className="text-xs text-white/50 mt-2">
                     {new Date(blog.created_at).toLocaleDateString()}
                   </p>

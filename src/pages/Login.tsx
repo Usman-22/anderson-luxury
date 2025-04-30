@@ -5,24 +5,20 @@ import Footer from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/sonner"; // ✅ Import toast
+import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/lib/supabase";
+import bcrypt from "bcryptjs";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/list-your-coach";
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,28 +26,38 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/users?email=${formData.email}&password=${formData.password}`
-      );
-      const users = await response.json();
+      const { data: user, error } = await supabase
+        .from("users")
+        .select("*", { count: "exact", head: false })
+        .eq("email", formData.email)
+        .single();
 
-      if (users.length === 1) {
-        localStorage.setItem("user", JSON.stringify(users[0]));
-
-        toast.success("Login Successful!", {
-          description: `Welcome back, ${users[0].name}!`,
-        });
-
-        navigate(from, { replace: true });
-      } else {
+      if (error || !user) {
         toast.error("Login Failed", {
-          description: "Invalid email or password. Try again.",
+          description: "Invalid email or password.",
         });
+        return;
       }
-    } catch (error: any) {
-      console.error(error);
-      toast.error("Something went wrong", {
-        description: error.message || "Please try again later.",
+
+      const isMatch = await bcrypt.compare(formData.password, user.password);
+      if (!isMatch) {
+        toast.error("Login Failed", {
+          description: "Invalid email or password.",
+        });
+        return;
+      }
+
+      localStorage.setItem("user", JSON.stringify(user));
+
+      toast.success("Login Successful!", {
+        description: `Welcome back, ${user.name}!`,
+      });
+
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Error", {
+        description: err.message || "Something went wrong.",
       });
     } finally {
       setLoading(false);
@@ -86,6 +92,7 @@ const Login = () => {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="current-password"
                 value={formData.password}
                 onChange={handleChange}
                 required

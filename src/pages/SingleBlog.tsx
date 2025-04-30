@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { supabase } from "@/lib/supabase";
 
 interface Blog {
-  id: number;
+  id: string;
   slug: string;
   title: string;
   content: string;
@@ -20,18 +21,24 @@ const SingleBlog = () => {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        const res = await fetch("http://localhost:5000/blogs");
-        const data = await res.json();
-        const foundBlog = data.find((b: Blog) => b.slug === slug);
-        setBlog(foundBlog);
+        const { data, error } = await supabase
+          .from("blogs")
+          .select("*")
+          .eq("slug", slug)
+          .eq("published", true)
+          .single();
+
+        if (error || !data) throw new Error("Blog not found");
+        setBlog(data);
       } catch (err) {
         console.error(err);
+        setBlog(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBlog();
+    if (slug) fetchBlog();
   }, [slug]);
 
   if (loading) {

@@ -1,6 +1,4 @@
-// src/pages/admin/AdminCreateListing.tsx
-
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Input } from "@/components/ui/input";
@@ -8,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const AdminCreateListing = () => {
   const navigate = useNavigate();
@@ -24,20 +24,26 @@ const AdminCreateListing = () => {
     comments: "",
   });
 
-  const [files, setFiles] = useState<File[]>([]);
+  const [featureImage, setFeatureImage] = useState<File | null>(null);
+  const [galleryImages, setGalleryImages] = useState<File[]>([]);
+  const featureImageRef = useRef<HTMLInputElement>(null);
+  const galleryImagesRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFeatureImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFeatureImage(e.target.files[0]);
+    }
+  };
+
+  const handleGalleryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      setGalleryImages(Array.from(e.target.files));
     }
   };
 
@@ -51,17 +57,44 @@ const AdminCreateListing = () => {
     setLoading(true);
 
     try {
+      if (!featureImage) {
+        throw new Error("Please upload the main product image.");
+      }
+
       const slug =
         generateSlug(formData.make, formData.model, formData.year) || uuidv4();
+      let heroImageUrl = "";
+      const gallery: string[] = [];
 
-      let uploadedImageUrl = "";
-      if (files.length > 0) {
-        // In production: upload image to server or cloud
-        uploadedImageUrl = "https://via.placeholder.com/600x400"; // Placeholder image
+      // Upload hero image
+      const heroPath = `admin-${slug}-hero-${Date.now()}-${featureImage.name}`;
+      const { error: heroError } = await supabase.storage
+        .from("coach-images")
+        .upload(heroPath, featureImage);
+
+      if (heroError) throw heroError;
+
+      const { data: heroData } = supabase.storage
+        .from("coach-images")
+        .getPublicUrl(heroPath);
+      heroImageUrl = heroData.publicUrl;
+
+      // Upload gallery images
+      for (let i = 0; i < galleryImages.length; i++) {
+        const image = galleryImages[i];
+        const path = `admin-${slug}-gallery-${i}-${Date.now()}-${image.name}`;
+        const { error: gError } = await supabase.storage
+          .from("coach-images")
+          .upload(path, image);
+        if (gError) throw gError;
+
+        const { data } = supabase.storage
+          .from("coach-images")
+          .getPublicUrl(path);
+        gallery.push(data.publicUrl);
       }
 
       const payload = {
-        id: uuidv4(),
         slug,
         title: `${formData.year} ${formData.make} ${formData.model}`,
         year: parseInt(formData.year),
@@ -71,29 +104,22 @@ const AdminCreateListing = () => {
         price: parseInt(formData.price),
         location: formData.location,
         coach_type: formData.coach_type,
-        hero_image_url: uploadedImageUrl,
+        hero_image_url: heroImageUrl,
+        gallery,
         comments: formData.comments,
-        created_at: new Date(),
-        updated_at: new Date(),
+        status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      const response = await fetch("http://localhost:5000/listings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const { error } = await supabase.from("listings").insert([payload]);
+      if (error) throw error;
 
-      if (!response.ok) {
-        throw new Error("Failed to create listing");
-      }
-
-      alert("Listing created successfully!");
+      toast.success("Listing created successfully!");
       navigate("/admin/listings");
-    } catch (error: any) {
-      console.error(error);
-      alert(error.message || "Unexpected error occurred");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -107,37 +133,105 @@ const AdminCreateListing = () => {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Input Fields */}
-          {[
-            { label: "Year", name: "year", type: "number" },
-            { label: "Make", name: "make", type: "text" },
-            { label: "Model", name: "model", type: "text" },
-            { label: "Mileage", name: "mileage", type: "number" },
-            { label: "Price", name: "price", type: "number" },
-            { label: "Location", name: "location", type: "text" },
-          ].map((field) => (
-            <div key={field.name}>
-              <Label htmlFor={field.name}>{field.label}</Label>
+          {/* Year + Make */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="year">Year</Label>
               <Input
-                id={field.name}
-                name={field.name}
-                type={field.type}
-                value={(formData as any)[field.name]}
+                id="year"
+                name="year"
+                type="number"
+                value={formData.year}
                 onChange={handleChange}
                 required
               />
             </div>
-          ))}
+            <div>
+              <Label htmlFor="make">Make</Label>
+              <Input
+                id="make"
+                name="make"
+                value={formData.make}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
 
-          {/* File Upload */}
+          {/* Model + Mileage */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="model">Model</Label>
+              <Input
+                id="model"
+                name="model"
+                value={formData.model}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="mileage">Mileage</Label>
+              <Input
+                id="mileage"
+                name="mileage"
+                type="number"
+                value={formData.mileage}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Price + Location */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="price">Price</Label>
+              <Input
+                id="price"
+                name="price"
+                type="number"
+                value={formData.price}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Feature Image */}
           <div>
-            <Label htmlFor="photos">Upload Photo</Label>
+            <Label htmlFor="featureImage">Main Product Image</Label>
             <Input
-              id="photos"
-              name="photos"
+              id="featureImage"
+              name="featureImage"
               type="file"
-              onChange={handleFileChange}
-              className="cursor-pointer"
+              accept="image/*"
+              onChange={handleFeatureImageChange}
+              ref={featureImageRef}
+            />
+          </div>
+
+          {/* Gallery Images */}
+          <div>
+            <Label htmlFor="galleryImages">Gallery Images</Label>
+            <Input
+              id="galleryImages"
+              name="galleryImages"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleGalleryImageChange}
+              ref={galleryImagesRef}
             />
           </div>
 
@@ -153,7 +247,6 @@ const AdminCreateListing = () => {
             />
           </div>
 
-          {/* Submit Button */}
           <Button
             type="submit"
             className="w-full button-gold text-black font-bold py-3"

@@ -1,30 +1,35 @@
-// src/pages/admin/AdminBlogs.tsx
-
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 interface Blog {
-  id: number;
+  id: string;
   slug: string;
   title: string;
   cover_image_url: string;
   created_at: string;
+  published: boolean;
 }
 
 const AdminBlogs = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   const fetchBlogs = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/blogs");
-      const data = await res.json();
-      setBlogs(data);
-    } catch (err) {
+      const { data, error } = await supabase
+        .from("blogs")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setBlogs(data || []);
+    } catch (err: any) {
       console.error("Failed to fetch blogs:", err);
       toast.error("Failed to fetch blogs");
     } finally {
@@ -36,22 +41,38 @@ const AdminBlogs = () => {
     fetchBlogs();
   }, []);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this blog?")) {
       try {
-        const res = await fetch(`http://localhost:5000/blogs/${id}`, {
-          method: "DELETE",
-        });
+        const { error } = await supabase.from("blogs").delete().eq("id", id);
+        if (error) throw error;
 
-        if (!res.ok) throw new Error("Failed to delete");
         toast.success("Blog deleted successfully");
-        fetchBlogs(); // refresh list
-      } catch (err) {
+        fetchBlogs();
+      } catch (err: any) {
         console.error("Delete blog failed:", err);
         toast.error("Failed to delete blog");
       }
     }
   };
+
+  const togglePublish = async (id: string, published: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("blogs")
+        .update({ published: !published })
+        .eq("id", id);
+      if (error) throw error;
+      toast.success(`Blog ${!published ? "published" : "unpublished"}`);
+      fetchBlogs();
+    } catch (err: any) {
+      toast.error("Failed to update publish status");
+    }
+  };
+
+  const filteredBlogs = blogs.filter((blog) =>
+    blog.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <AdminLayout>
@@ -64,15 +85,24 @@ const AdminBlogs = () => {
         </Link>
       </div>
 
+      <div className="mb-6">
+        <Input
+          placeholder="Search blogs..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-md"
+        />
+      </div>
+
       {loading ? (
         <div className="text-center text-gray-400 py-20">Loading blogs...</div>
-      ) : blogs.length === 0 ? (
+      ) : filteredBlogs.length === 0 ? (
         <div className="text-center text-gray-400 py-20">
           No blogs available.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {blogs.map((blog) => (
+          {filteredBlogs.map((blog) => (
             <div
               key={blog.id}
               className="bg-dark border border-white/10 rounded-lg overflow-hidden shadow-md"
@@ -81,6 +111,10 @@ const AdminBlogs = () => {
                 src={blog.cover_image_url}
                 alt={blog.title}
                 className="w-full h-48 object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    "https://via.placeholder.com/600x400?text=No+Image";
+                }}
               />
 
               <div className="p-4 space-y-2">
@@ -89,7 +123,7 @@ const AdminBlogs = () => {
                   {new Date(blog.created_at).toLocaleDateString()}
                 </p>
 
-                <div className="flex gap-3 mt-4">
+                <div className="flex flex-wrap gap-3 mt-4">
                   <Link to={`/admin/blogs/${blog.id}/edit`}>
                     <Button
                       size="sm"
@@ -105,6 +139,16 @@ const AdminBlogs = () => {
                     onClick={() => handleDelete(blog.id)}
                   >
                     Delete
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={
+                      blog.published ? "text-red-500" : "text-green-500"
+                    }
+                    onClick={() => togglePublish(blog.id, blog.published)}
+                  >
+                    {blog.published ? "Unpublish" : "Publish"}
                   </Button>
                 </div>
               </div>

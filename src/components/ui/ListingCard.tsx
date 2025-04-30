@@ -44,11 +44,11 @@ const ListingCard = ({
         hover:shadow-[0_0_25px_rgba(0,0,0,0.3)] hover:-translate-y-1`}
     >
       <div className="relative overflow-hidden">
-        <div className="aspect-[16/9]">
+        <div className="aspect-video">
           <img
             src={heroImageUrl}
             alt={title}
-            className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+            className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
           />
         </div>
 

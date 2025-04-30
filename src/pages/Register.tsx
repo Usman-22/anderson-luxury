@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/sonner"; // ✅ Toast
+import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/lib/supabase";
+import bcrypt from "bcryptjs";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -17,10 +19,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,38 +27,38 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const checkResponse = await fetch(
-        `http://localhost:5000/users?email=${formData.email}`
-      );
-      const existingUsers = await checkResponse.json();
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", formData.email)
+        .single();
 
-      if (existingUsers.length > 0) {
+      if (existingUser) {
         toast.error("Already Registered", {
-          description: "This email is already associated with an account.",
+          description: "This email is already taken.",
         });
-      } else {
-        const response = await fetch("http://localhost:5000/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        });
-
-        if (!response.ok) {
-          throw new Error("Registration failed.");
-        }
-
-        toast.success("Registration Successful", {
-          description: "Welcome! You can now login.",
-        });
-
-        navigate("/login");
+        return;
       }
+
+      const hashedPassword = await bcrypt.hash(formData.password, 10);
+
+      const { error } = await supabase.from("users").insert({
+        name: formData.name,
+        email: formData.email,
+        password: hashedPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success("Registration Successful", {
+        description: "You can now login.",
+      });
+
+      navigate("/login");
     } catch (error: any) {
       console.error(error);
-      toast.error("Something went wrong", {
-        description: error.message || "Please try again later.",
+      toast.error("Registration Failed", {
+        description: error.message || "Try again later.",
       });
     } finally {
       setLoading(false);

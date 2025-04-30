@@ -6,15 +6,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 
 interface Blog {
-  id: number;
+  id: string;
   slug: string;
   title: string;
   content: string;
   cover_image_url: string;
+  meta_title: string;
+  meta_description: string;
+  tags: string[]; // array type
   created_at: string;
+  updated_at?: string;
 }
 
 const AdminEditBlog = () => {
@@ -28,19 +34,18 @@ const AdminEditBlog = () => {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/blogs`);
-        if (!res.ok) throw new Error("Failed to load blogs");
-        const data: Blog[] = await res.json();
-        const foundBlog = data.find((b) => String(b.id) === String(id));
-        if (!foundBlog) throw new Error("Blog not found");
-
-        setFormData(foundBlog);
-        setPreviewUrl(foundBlog.cover_image_url);
-      } catch (error: any) {
-        console.error(error);
+        const { data, error } = await supabase
+          .from("blogs")
+          .select("*")
+          .eq("id", id)
+          .single();
+        if (error || !data) throw new Error("Blog not found");
+        setFormData(data);
+        setPreviewUrl(data.cover_image_url);
+      } catch (err: any) {
         toast({
           title: "Error",
-          description: error.message || "Failed to load blog.",
+          description: err.message,
           variant: "destructive",
         });
       } finally {
@@ -55,11 +60,12 @@ const AdminEditBlog = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     if (!formData) return;
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       setNewImage(e.target.files[0]);
       setPreviewUrl(URL.createObjectURL(e.target.files[0]));
     }
@@ -80,38 +86,48 @@ const AdminEditBlog = () => {
       let imageUrl = formData.cover_image_url;
 
       if (newImage) {
-        const reader = new FileReader();
-        reader.readAsDataURL(newImage);
-        await new Promise((resolve) => (reader.onload = resolve));
-        imageUrl = reader.result as string;
+        const imagePath = `public/edit-${uuidv4()}.${newImage.name
+          .split(".")
+          .pop()}`;
+        const { error: uploadError } = await supabase.storage
+          .from("blog-images")
+          .upload(imagePath, newImage, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("blog-images")
+          .getPublicUrl(imagePath);
+        imageUrl = urlData.publicUrl;
       }
 
-      const updatedBlog = {
+      const updated = {
         ...formData,
-        cover_image_url: imageUrl,
         slug: generateSlug(formData.title),
+        cover_image_url: imageUrl,
+        tags:
+          typeof formData.tags === "string"
+            ? formData.tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter(Boolean)
+            : formData.tags,
         updated_at: new Date().toISOString(),
       };
 
-      const res = await fetch(`http://localhost:5000/blogs/${formData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedBlog),
-      });
+      const { error: updateError } = await supabase
+        .from("blogs")
+        .update(updated)
+        .eq("id", formData.id);
 
-      if (!res.ok) throw new Error("Failed to update blog");
+      if (updateError) throw updateError;
 
-      toast({
-        title: "Success",
-        description: "Blog updated successfully.",
-      });
-
+      toast({ title: "Success", description: "Blog updated successfully." });
       navigate("/admin/blogs");
-    } catch (error: any) {
-      console.error(error);
+    } catch (err: any) {
       toast({
-        title: "Error",
-        description: error.message || "Update failed.",
+        title: "Update Failed",
+        description: err.message,
         variant: "destructive",
       });
     }
@@ -170,7 +186,7 @@ const AdminEditBlog = () => {
           </div>
 
           <div>
-            <Label htmlFor="content">Content (HTML supported)</Label>
+            <Label htmlFor="content">Content</Label>
             <Textarea
               id="content"
               name="content"
@@ -178,6 +194,39 @@ const AdminEditBlog = () => {
               value={formData.content}
               onChange={handleChange}
               required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="meta_title">Meta Title</Label>
+            <Input
+              id="meta_title"
+              name="meta_title"
+              value={formData.meta_title || ""}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="meta_description">Meta Description</Label>
+            <Textarea
+              id="meta_description"
+              name="meta_description"
+              rows={3}
+              value={formData.meta_description || ""}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="tags">Tags (comma-separated)</Label>
+            <Input
+              id="tags"
+              name="tags"
+              value={
+                Array.isArray(formData.tags) ? formData.tags.join(", ") : ""
+              }
+              onChange={handleChange}
             />
           </div>
 

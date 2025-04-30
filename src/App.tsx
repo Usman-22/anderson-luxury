@@ -63,7 +63,7 @@ const App: React.FC = () => {
                 element={<AdminCreateListing />}
               />
               <Route
-                path="/admin/listings/edit/:id"
+                path="/admin/listings/:id/edit"
                 element={<AdminEditListing />}
               />
               <Route path="/admin/listings" element={<AdminListings />} />
